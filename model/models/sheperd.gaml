@@ -11,10 +11,17 @@ global {
 	int width <- 50;
 	int height <- 50;
 	float grove_pct <- 0.3;
-	int number_of_goats <- 80;
+	int number_of_goats <- 100;
 	int number_of_goats_per_herd <- 10;
-	float goat_eating_cap <- 0.08;
-	float tree_growth_rate <- 0.1;
+	float goat_eating_cap <- 1.0;
+	float min_growth_rate <- 0.0001;
+	float max_growth_rate <- min_growth_rate * 8;
+	int eating_season_month_end <- 10;
+	int fringe_size <- 8;
+	int min_fringe_size <- 6;
+	float tree_init_cover <- 0.3;
+	int goat_move_range <- 4;
+	float threshold_to_eat <- 0.5;
 	
 	float step <- 1 #week;
 	
@@ -37,9 +44,9 @@ global {
 grid pasture_cell height: 50 width: 50 neighbors: 4 {
 //	rgb color <- #darkseagreen;
 	float max_tree <- 1.0;
-	float growth_rate <- rnd(tree_growth_rate);
+	float growth_rate <- min_growth_rate max: max_growth_rate;
 	float tree max: max_tree;
-	bool has_tree <- flip(0.3);
+	bool has_tree <- flip(tree_init_cover);
 	init {
 		if has_tree {
 			tree <- 1.0;
@@ -49,13 +56,27 @@ grid pasture_cell height: 50 width: 50 neighbors: 4 {
 			color <- rgb(144, 238, 144);
 		}
 	}
-	reflex grow_tree {
-		if color != rgb(144, 238, 144) {
+	list<pasture_cell> neighbors_to_move  <- (self neighbors_at goat_move_range);
+	list<pasture_cell> fringe <- (self neighbors_at fringe_size);
+	reflex grow_tree when: tree < 1.0 {
+		int nb_tree_count <- fringe count (each.tree > 0);
+//		if color != rgb(144, 238, 144) and nb_tree_count >= min_fringe_size{
+		if nb_tree_count >= min_fringe_size {
 			color <- rgb(int(144 * (1 - tree)), int(238 - 138 * tree), int(144 * (1 - tree)));
-			tree <- tree + growth_rate;
+			tree <- tree + growth_rate * nb_tree_count;
+		}
+
+	}
+	
+	reflex update_tree_status {
+		if tree = 0.0 {
+			has_tree <- false;
+			growth_rate <- min_growth_rate;
+		} else {
+			has_tree <- true;
 		}
 	}
-	list<pasture_cell> neighbors2  <- (self neighbors_at 2);
+	
 }
 
 //species grove {
@@ -75,15 +96,13 @@ species goat {
 	location <- my_cell.location;
     }
 		
-    reflex basic_move when: my_cell.tree = 0 and current_date.month <= 10 {
-	my_cell <- one_of (my_cell.neighbors2) ;
+    reflex basic_move when: my_cell.tree < threshold_to_eat and current_date.month <= eating_season_month_end {
+	my_cell <- one_of (my_cell.neighbors_to_move) ;
 	location <- my_cell.location ;
     }
     
-    // https://gama-platform.org/wiki/PredatorPrey_step3
-	reflex eat when: my_cell.tree > 0 and current_date.month <= 10 { 
-		float energy_transfer <- min([eating_cap, my_cell.tree]);
-		my_cell.tree <- my_cell.tree - energy_transfer;
+	reflex eat when: my_cell.tree >= threshold_to_eat and current_date.month <= eating_season_month_end { 
+		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
 	}
 
     aspect default {
