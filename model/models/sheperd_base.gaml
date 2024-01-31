@@ -10,21 +10,21 @@ model sheperd
 global {
 	
 	float step <- 1 #week;
+	bool is_batch <- false;
 	
 	bool has_no_regulation <- true;
 	float respectful_proba <- 0.0;
 	int width <- 50;
 	int height <- 50;
-	float grove_pct <- 0.3;
 	int number_of_goats_per_herd <- 4;
-	float goat_eating_cap <- 0.6;
+	float goat_eating_cap <- 0.7;
 	int eating_season_month_end <- 10;
-	int n_months_to_full_growth <- 10;
+	int n_months_to_full_growth <- 20;
 	float min_spread_seed_proba <- 0.0025;
 	int fringe_size <- 8;
-	int min_fringe_size <- 2;
+	int min_fringe_size <- 4;
 	float tree_init_cover <- 0.3;
-	int goat_move_range <- 4;
+	int goat_move_range <- 5;
 	float threshold_to_eat <- 0.0;
 	float global_min_size;
 	list<pasture_cell> empty_cells;
@@ -47,7 +47,7 @@ global {
 	} 
 }
 
-grid pasture_cell height: 50 width: 50 neighbors: 8 {
+grid pasture_cell height: 50 width: 50 neighbors: fringe_size {
 
 	float max_tree <- 1.0;
 	float growth_rate <- max_tree / n_months_to_full_growth;
@@ -155,6 +155,21 @@ species goat {
 }
 
 experiment sheperd_exp type: gui {
+	
+	parameter "Eating season - Month end: " var: eating_season_month_end category: "Initialization";
+	parameter "Initial grove coverage: " var: tree_init_cover category: "Initialization";
+	
+	parameter "Disable regulation completely: " var: has_no_regulation category: "Sheperd and goat";
+	parameter "Probability of being respectful: " var: respectful_proba category: "Sheperd and goat";
+	parameter "Number of goat per herd: " var: number_of_goats_per_herd category: "Sheperd and goat";
+	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat";
+	parameter "Goat perceive/move range: " var: goat_move_range category: "Sheperd and goat";
+	
+	parameter "Number of months for tree groves to fully grow" var: n_months_to_full_growth category: "Tree groves" ;
+	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" ;
+	parameter "Fringe/Neighbor size: " var: fringe_size category: "Tree groves" ;
+	parameter "Minimum fringe size for seed to spread: " var: min_fringe_size category: "Tree groves" ;
+
 	output {
 //		monitor "Current month" value: current_date.month;
 		display grid {
