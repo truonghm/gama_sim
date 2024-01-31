@@ -30,13 +30,9 @@ global {
 	init {
 		empty_cells <- list(pasture_cell);
 //		create grove number: width * height * grove_pct;
-		create goat number: number_of_goats;
 		loop c over: goat_colors {
 		    
-		    ask (number_of_goats_per_herd among goat) {
-		    	color <- c;
-		    	is_respectful <- flip(0.5);
-		    }
+		    create goat number: 10 with: [color:: c];
 		}
 	}
 }
@@ -89,7 +85,7 @@ grid pasture_cell height: 50 width: 50 neighbors: 4 {
 
 species goat {
     rgb color <- #beige;
-    bool is_respectful <- true;
+    bool is_respectful;
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
     init {
