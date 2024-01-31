@@ -12,11 +12,11 @@ global {
 	float step <- 1 #week;
 	bool is_batch <- false;
 	
-	bool has_no_regulation <- true;
+	bool has_no_regulation <- false;
 	float respectful_proba <- 0.0;
 	int width <- 50;
 	int height <- 50;
-	int number_of_goats_per_herd <- 4;
+	int number_of_goats_per_herd <- 10;
 	float goat_eating_cap <- 0.7;
 	int eating_season_month_end <- 10;
 	int n_months_to_full_growth <- 20;
@@ -26,7 +26,13 @@ global {
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 5;
 	float threshold_to_eat <- 0.0;
+
 	float global_min_size;
+	float avg_grove_size;
+	float tree_cov;
+	int n_respectful_sheperd;
+	int n_disrespectful_sheperd;
+	
 	list<pasture_cell> empty_cells;
 	list<rgb> goat_colors <- [rgb(100,50,255), rgb(255,105,180), rgb(255,255, 0), rgb(0,255,255), rgb(255,255,255), rgb(0,100,250), rgb(255,130,0), rgb(165,42,42)];
 	init {
@@ -35,14 +41,17 @@ global {
 		    
 		    create goat number: 10 with: [color:: c] returns: goats_per_sheperd;
 		    create sheperd with: [herd_color:: c, goats:: goats_per_sheperd];
+		    n_respectful_sheperd <- sheperd count each.is_respectful;
+		    n_disrespectful_sheperd <- length(goat_colors) - n_respectful_sheperd;
 		}
 	}
 	
-	reflex compute_min_size {
+	reflex compute {
 		global_min_size <- sheperd mean_of (each.min_size);
+		avg_grove_size <- pasture_cell mean_of (each.current_size);
+		tree_cov <- ((pasture_cell count (each.tree = 1)) / (width * height));
 	}
-	
-	reflex stop_simulation when: ((pasture_cell count (each.tree = 1)) = 0) {
+	reflex stop_simulation when: (tree_cov = 0.0) or (tree_cov > 0.99) and !is_batch {
 		do pause;
 	} 
 }
@@ -86,7 +95,13 @@ species sheperd {
 	int min_size <- 0;
 	rgb herd_color;
 	list<goat> goats;
-
+	bool is_respectful <- flip(respectful_proba);
+	
+	init {
+		loop g over: goats {
+			g.is_respectful <- is_respectful;
+		}
+	}
 	reflex compute_min_size when: current_date.month = 1 {
 		min_size <- eating_season_month_end - goats max_of (each.n_months_graze_tree);
 		
@@ -98,7 +113,7 @@ species sheperd {
 
 species goat {
     rgb color;
-    bool is_respectful <- flip(respectful_proba);
+    bool is_respectful;
     int herd_min_size <- 0;
 //    bool has_grazed_tree <- false;
 	int n_months_graze_tree <- 0;
@@ -181,18 +196,37 @@ experiment sheperd_exp type: gui {
 		display charts refresh: every (12 #month) {
 			chart "Average grove size vs Institutional minimum size" type:series background:rgb(255,255,255) visible: false {
 				data "avg min size" legend: "Ins. min size" value: global_min_size color:#green marker: false style: line;
-				data "avg grove size" legend: "Avg grove size" value: pasture_cell mean_of (each.current_size) color: #red marker: false style: line;
+				data "avg grove size" legend: "Avg grove size" value: avg_grove_size color: #red marker: false style: line;
 			}
 
 			chart "Grove coverage (fully grown only) at the beginning of grazing season" type:series  background:rgb(255,255,255) {
-				data "grove cov fully grow" value: (pasture_cell count (each.tree = 1)) / (width * height) color:#red marker: false style: line;
+				data "grove cov fully grow" value: tree_cov color:#red marker: false style: line;
 			}
 		}
 		
 		display charts refresh: every (1 #month) {
 			chart "Grove coverage (fully grown only) through time" x_tick_unit: 12 type:series  background:rgb(255,255,255) {
-				data "grove cov fully grow" value: (pasture_cell count (each.tree = 1)) / (width * height) color:#red marker: false style: line;
+				data "grove cov fully grow" value: tree_cov color:#red marker: false style: line;
 			}
 		}
+	}
+}
+
+experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
+	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat" min: 0.1 max: 1.0 step: 0.1;
+	parameter "Probability of being respectful: " var: respectful_proba category: "Sheperd and goat" min: 0.0 max: 1.0 step: 0.1;
+	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0025 max: 0.125 step: 0.0005;
+	parameter "Batch mode:" var: is_batch <- true;
+	
+    method tabu 
+        iter_max: 50 tabu_list_size: 5 
+        maximize: tree_cov;
+	
+	
+	reflex save_results_explo {
+		ask simulations {
+			save [int(self),tree_cov, respectful_proba, n_respectful_sheperd, n_disrespectful_sheperd, goat_eating_cap, min_spread_seed_proba] 
+		   		to: "results_base.csv" format:"csv" rewrite: (int(self) = 0) ? true : false header: true;
+		}		
 	}
 }
