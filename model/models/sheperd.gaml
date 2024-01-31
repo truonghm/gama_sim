@@ -47,14 +47,15 @@ grid pasture_cell height: 50 width: 50 neighbors: 4 {
 	init {
 		if has_tree {
 			tree <- 1.0;
-			color <- rgb(0, 100, 0);
+			color <- rgb(0, 100, 0); // full-grown tree to eat
 		} else {
 			tree <- 0.0;
-			color <- rgb(144, 238, 144);
+			color <- rgb(144, 238, 144); // only grass available to eat
 		}
 	}
 	list<pasture_cell> neighbors_to_move  <- (self neighbors_at goat_move_range);
 	list<pasture_cell> fringe <- (self neighbors_at fringe_size);
+
 	reflex grow_tree when: tree < 1.0 {
 		int nb_tree_count <- fringe count (each.tree > 0);
 //		if color != rgb(144, 238, 144) and nb_tree_count >= min_fringe_size{
@@ -80,12 +81,17 @@ species sheperd {
 	int min_size <- 0;
 	rgb herd_color;
 	list<goat> goats;
-	
-	reflex compute_min_size when: current_date.month = 10 {
-		min_size <- 0;
-		list<int> unique_months <- [];
+	list<int> unique_months <- [];
+
+	reflex compute_min_size when: current_date.month <= eating_season_month_end {
+		
+		if current_date.month = 10 {
+			unique_months <- [];
+			min_size <- 0;
+		}
+
 		int n_goats_grazing_tree <- goats count each.is_grazing_tree;
-		if !(unique_months contains current_date.month) and n_goats_grazing_tree > 0 and current_date.month <= eating_season_month_end {
+		if !(unique_months contains current_date.month) and n_goats_grazing_tree > 0 {
 			add current_date.month to: unique_months;
 			min_size <- min_size + 1;
 		}
@@ -125,12 +131,18 @@ species goat {
 
 experiment sheperd_exp type: gui {
 	output {
-		monitor "Current month" value: current_date.month;
+//		monitor "Current month" value: current_date.month;
 		display grid {
 			grid pasture_cell;
 //			species grove;
 			species goat;
 			
+		}
+
+		display charts {
+			chart "charts" type:series background:rgb(255,255,255){
+				data "avg min size" value: sheperd mean_of (each.min_size) color:#green;
+			}
 		}
 	}
 }
