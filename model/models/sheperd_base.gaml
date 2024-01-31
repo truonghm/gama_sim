@@ -11,6 +11,8 @@ global {
 	
 	float step <- 1 #week;
 	
+	bool has_no_regulation <- true;
+	float respectful_proba <- 0.0;
 	int width <- 50;
 	int height <- 50;
 	float grove_pct <- 0.3;
@@ -24,7 +26,7 @@ global {
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 4;
 	float threshold_to_eat <- 0.0;
-	
+	float global_min_size;
 	list<pasture_cell> empty_cells;
 	list<rgb> goat_colors <- [rgb(255,0,0), rgb(255,105,180), rgb(128,0,128), rgb(0,255,255), rgb(0,0,255), rgb(0,128,0), rgb(255,165,0), rgb(165,42,42)];
 	init {
@@ -35,6 +37,14 @@ global {
 		    create sheperd with: [herd_color:: c, goats:: goats_per_sheperd];
 		}
 	}
+	
+	reflex compute_min_size {
+		global_min_size <- sheperd mean_of (each.min_size);
+	}
+	
+	reflex stop_simulation when: ((pasture_cell count (each.tree = 1)) = 0 or (pasture_cell count (each.tree = 1)) = 250) {
+		do pause;
+	} 
 }
 
 grid pasture_cell height: 50 width: 50 neighbors: 8 {
@@ -88,7 +98,7 @@ species sheperd {
 
 species goat {
     rgb color <- #beige;
-    bool is_respectful;
+    bool is_respectful <- flip(respectful_proba);
     int herd_min_size <- 0;
 //    bool has_grazed_tree <- false;
 	int n_months_graze_tree <- 0;
@@ -110,7 +120,7 @@ species goat {
 		location <- my_cell.location ;
     }
     
-	reflex eat_tree when: my_cell.tree > threshold_to_eat and current_date.month <= eating_season_month_end { 
+    action eat_tree {
 		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
 		if my_cell.tree = 0.0 {
 			my_cell.has_tree <- false;
@@ -119,6 +129,22 @@ species goat {
 		if not (unique_months contains current_date.month) {
 			add current_date.month to: unique_months;
 			n_months_graze_tree <- n_months_graze_tree + 1;
+		}
+    }
+
+	reflex eat_tree when: my_cell.tree > threshold_to_eat and current_date.month <= eating_season_month_end { 
+		if has_no_regulation {
+			do eat_tree;
+		} else {
+			if not is_respectful {
+				if my_cell.current_size >= herd_min_size {
+					do eat_tree;
+				}
+			} else {
+				if my_cell.current_size >= global_min_size {
+					do eat_tree;
+				}
+			}
 		}
 		
 	}
@@ -139,7 +165,7 @@ experiment sheperd_exp type: gui {
 
 		display charts refresh: every (12 #month) {
 			chart "charts" type:series background:rgb(255,255,255){
-				data "avg min size" value: sheperd mean_of (each.min_size) color:#green marker: false style: line;
+				data "avg min size" value: global_min_size color:#green marker: false style: line;
 				data "avg grove size" value: pasture_cell mean_of (each.current_size) color: #red marker: false style: line;
 			}
 		}
