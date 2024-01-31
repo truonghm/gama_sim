@@ -76,23 +76,22 @@ grid pasture_cell height: 50 width: 50 neighbors: 4 {
 	
 }
 
-//species grove {
-//	rgb color <- #darkgreen;
-//  
-//	aspect default {
-//		draw circle(1) color: color;
-//	}
-//}
-
 species sheperd {
-	int min_size;
+	int min_size <- 0;
 	rgb herd_color;
 	list<goat> goats;
 	
 	reflex compute_min_size when: current_date.month = 10 {
+		min_size <- 0;
+		list<int> unique_months <- [];
+		int n_goats_grazing_tree <- goats count each.is_grazing_tree;
+		if !(unique_months contains current_date.month) and n_goats_grazing_tree > 0 and current_date.month <= eating_season_month_end {
+			add current_date.month to: unique_months;
+			min_size <- min_size + 1;
+		}
+		
 		loop g over: goats {
-			// TODO: compute min size, which is the difference between the grazing season 
-			// duration in months (10) and the number of months they were able to perceive the forest
+			g.herd_min_size <- min_size;
 		}
 	}
 }
@@ -100,6 +99,8 @@ species sheperd {
 species goat {
     rgb color <- #beige;
     bool is_respectful;
+    int herd_min_size <- 0;
+    bool is_grazing_tree <- false;
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
     init {
@@ -113,6 +114,7 @@ species goat {
     
 	reflex eat when: my_cell.tree >= threshold_to_eat and current_date.month <= eating_season_month_end { 
 		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
+		is_grazing_tree <- true;
 	}
 
 
