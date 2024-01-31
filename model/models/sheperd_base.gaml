@@ -42,12 +42,12 @@ global {
 		global_min_size <- sheperd mean_of (each.min_size);
 	}
 	
-	reflex stop_simulation when: ((pasture_cell count (each.tree = 1)) = 0 or (pasture_cell count (each.tree = 1)) = 250) {
+	reflex stop_simulation when: ((pasture_cell count (each.tree = 1)) = 0) {
 		do pause;
 	} 
 }
 
-grid pasture_cell height: 50 width: 50 neighbors: fringe_size {
+grid pasture_cell height: height width: width neighbors: fringe_size {
 
 	float max_tree <- 1.0;
 	float growth_rate <- max_tree / n_months_to_full_growth;
@@ -74,8 +74,8 @@ grid pasture_cell height: 50 width: 50 neighbors: fringe_size {
 			current_size <- tree / growth_rate;
 	}
 
-	reflex plant_tree when: tree = 0 {
-		int nb_tree_count <- fringe count (each.tree = 1);
+	reflex plant_seed when: tree = 0 {
+		int nb_tree_count <- fringe count (each.tree > 0);
 		if nb_tree_count >= min_fringe_size {
 			has_tree <- flip(min_spread_seed_proba * nb_tree_count);
 		}
@@ -157,16 +157,16 @@ species goat {
 experiment sheperd_exp type: gui {
 	
 	parameter "Eating season - Month end: " var: eating_season_month_end category: "Initialization";
-	parameter "Initial grove coverage: " var: tree_init_cover category: "Initialization";
+	parameter "Initial grove coverage: " var: tree_init_cover category: "Initialization" min: 0.0 max: 1.0 step: 0.1 slider: true;
 	
 	parameter "Disable regulation completely: " var: has_no_regulation category: "Sheperd and goat";
-	parameter "Probability of being respectful: " var: respectful_proba category: "Sheperd and goat";
+	parameter "Probability of being respectful: " var: respectful_proba category: "Sheperd and goat" min: 0.0 max: 1.0 step: 0.1 slider: true;
 	parameter "Number of goat per herd: " var: number_of_goats_per_herd category: "Sheperd and goat";
-	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat";
+	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat" min: 0.0 max: 1.0 step: 0.1 slider: true;
 	parameter "Goat perceive/move range: " var: goat_move_range category: "Sheperd and goat";
 	
-	parameter "Number of months for tree groves to fully grow" var: n_months_to_full_growth category: "Tree groves" ;
-	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" ;
+	parameter "Number of months for tree groves to fully grow" var: n_months_to_full_growth category: "Tree groves" step: 5 slider: true;
+	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0 max: 1.0;
 	parameter "Fringe/Neighbor size: " var: fringe_size category: "Tree groves" ;
 	parameter "Minimum fringe size for seed to spread: " var: min_fringe_size category: "Tree groves" ;
 
@@ -179,9 +179,19 @@ experiment sheperd_exp type: gui {
 		}
 
 		display charts refresh: every (12 #month) {
-			chart "charts" type:series background:rgb(255,255,255){
-				data "avg min size" value: global_min_size color:#green marker: false style: line;
-				data "avg grove size" value: pasture_cell mean_of (each.current_size) color: #red marker: false style: line;
+			chart "Average grove size vs Institutional minimum size" type:series background:rgb(255,255,255) visible: false {
+				data "avg min size" legend: "Ins. min size" value: global_min_size color:#green marker: false style: line;
+				data "avg grove size" legend: "Avg grove size" value: pasture_cell mean_of (each.current_size) color: #red marker: false style: line;
+			}
+
+			chart "Grove coverage (fully grown only) at the beginning of grazing season" type:series  background:rgb(255,255,255) {
+				data "grove cov fully grow" value: (pasture_cell count (each.tree = 1)) / (width * height) color:#red marker: false style: line;
+			}
+		}
+		
+		display charts refresh: every (1 #month) {
+			chart "Grove coverage (fully grown only) through time" x_tick_unit: 12 type:series  background:rgb(255,255,255) {
+				data "grove cov fully grow" value: (pasture_cell count (each.tree = 1)) / (width * height) color:#red marker: false style: line;
 			}
 		}
 	}
