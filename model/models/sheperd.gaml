@@ -32,7 +32,8 @@ global {
 //		create grove number: width * height * grove_pct;
 		loop c over: goat_colors {
 		    
-		    create goat number: 10 with: [color:: c];
+		    create goat number: 10 with: [color:: c] returns: goats_per_sheperd;
+		    create sheperd with: [herd_color:: c, goats:: goats_per_sheperd];
 		}
 	}
 }
@@ -83,6 +84,19 @@ grid pasture_cell height: 50 width: 50 neighbors: 4 {
 //	}
 //}
 
+species sheperd {
+	int min_size;
+	rgb herd_color;
+	list<goat> goats;
+	
+	reflex compute_min_size when: current_date.month = 10 {
+		loop g over: goats {
+			// TODO: compute min size, which is the difference between the grazing season 
+			// duration in months (10) and the number of months they were able to perceive the forest
+		}
+	}
+}
+
 species goat {
     rgb color <- #beige;
     bool is_respectful;
@@ -101,12 +115,13 @@ species goat {
 		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
 	}
 
+
     aspect default {
         draw circle(0.8) color: color;
     }
 }
 
-experiment sheperd type: gui {
+experiment sheperd_exp type: gui {
 	output {
 		monitor "Current month" value: current_date.month;
 		display grid {
