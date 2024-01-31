@@ -11,8 +11,8 @@ global {
 	int width <- 50;
 	int height <- 50;
 	float grove_pct <- 0.3;
-	int number_of_goats <- 100;
-	int number_of_goats_per_herd <- 10;
+//	int number_of_goats <- 100;
+	int number_of_goats_per_herd <- 4;
 	float goat_eating_cap <- 0.1;
 	float tree_growth_rate <- 0.001;
 	float min_spread_seed_proba <- 0.0025;
@@ -77,20 +77,9 @@ species sheperd {
 	int min_size <- 0;
 	rgb herd_color;
 	list<goat> goats;
-	list<int> unique_months <- [];
 
-	reflex compute_min_size when: current_date.month <= eating_season_month_end {
-		
-		if current_date.month = 10 {
-			unique_months <- [];
-			min_size <- 0;
-		}
-
-		int n_goats_grazing_tree <- goats count each.is_grazing_tree;
-		if !(unique_months contains current_date.month) and n_goats_grazing_tree > 0 {
-			add current_date.month to: unique_months;
-			min_size <- min_size + 1;
-		}
+	reflex compute_min_size when: current_date.month = 1 {
+		min_size <- eating_season_month_end - goats max_of (each.n_months_graze_tree);
 		
 		loop g over: goats {
 			g.herd_min_size <- min_size;
@@ -102,15 +91,21 @@ species goat {
     rgb color <- #beige;
     bool is_respectful;
     int herd_min_size <- 0;
-    bool is_grazing_tree <- false;
+//    bool has_grazed_tree <- false;
+	int n_months_graze_tree <- 0;
+	list<int> unique_months <- [];
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
     init {
 		location <- my_cell.location;
     }
 
+	reflex reset when: current_date.month = 1 {
+		unique_months <- [];
+		n_months_graze_tree <- 0;
+	}
 
-    reflex basic_move when: (my_cell.tree <= threshold_to_eat) and current_date.month <= eating_season_month_end {
+    reflex move when: (my_cell.tree <= threshold_to_eat) and current_date.month <= eating_season_month_end {
     	list<pasture_cell> full_growth_nb <- my_cell.neighbors_to_move select (each.tree = 1);
     	if length(full_growth_nb) > 0 {
 			my_cell <- one_of (full_growth_nb) ;
@@ -118,14 +113,18 @@ species goat {
     	}
     }
     
-	reflex eat when: my_cell.tree > threshold_to_eat and my_cell.growth_rate = 0 and current_date.month <= eating_season_month_end { 
+	reflex eat_tree when: my_cell.tree > threshold_to_eat and my_cell.growth_rate = 0 and current_date.month <= eating_season_month_end { 
 		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
-		is_grazing_tree <- true;
 		if my_cell.tree = 0.0 {
 			my_cell.has_tree <- false;
 		}
+		
+		if not (unique_months contains current_date.month) {
+			add current_date.month to: unique_months;
+			n_months_graze_tree <- n_months_graze_tree + 1;
+		}
+		
 	}
-
 
     aspect default {
         draw circle(0.8) color: color;
@@ -134,16 +133,16 @@ species goat {
 
 experiment sheperd_exp type: gui {
 	output {
-		monitor "Current month" value: current_date.month;
+//		monitor "Current month" value: current_date.month;
 		display grid {
 			grid pasture_cell;
 			species goat;
 			
 		}
 
-		display charts {
+		display charts refresh: every (12 #month) {
 			chart "charts" type:series background:rgb(255,255,255){
-				data "avg min size" value: sheperd mean_of (each.min_size) color:#green;
+				data "avg min size" value: sheperd mean_of (each.min_size) color:#green marker: false style: line;
 			}
 		}
 	}
