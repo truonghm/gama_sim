@@ -28,7 +28,7 @@ global {
 	float threshold_to_eat <- 0.0;
 	float global_min_size;
 	list<pasture_cell> empty_cells;
-	list<rgb> goat_colors <- [rgb(255,0,0), rgb(255,105,180), rgb(128,0,128), rgb(0,255,255), rgb(0,0,255), rgb(0,128,0), rgb(255,165,0), rgb(165,42,42)];
+	list<rgb> goat_colors <- [rgb(100,50,255), rgb(255,105,180), rgb(255,255, 0), rgb(0,255,255), rgb(255,255,255), rgb(0,100,250), rgb(255,130,0), rgb(165,42,42)];
 	init {
 		empty_cells <- list(pasture_cell);
 		loop c over: goat_colors {
@@ -97,7 +97,7 @@ species sheperd {
 }
 
 species goat {
-    rgb color <- #beige;
+    rgb color;
     bool is_respectful <- flip(respectful_proba);
     int herd_min_size <- 0;
 //    bool has_grazed_tree <- false;
