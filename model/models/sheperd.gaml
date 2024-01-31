@@ -8,22 +8,23 @@
 model sheperd
 
 global {
+	
+	float step <- 1 #week;
+	
 	int width <- 50;
 	int height <- 50;
 	float grove_pct <- 0.3;
-//	int number_of_goats <- 100;
 	int number_of_goats_per_herd <- 4;
-	float goat_eating_cap <- 0.1;
-	float tree_growth_rate <- 0.001;
-	float min_spread_seed_proba <- 0.0025;
+	float goat_eating_cap <- 0.6;
+//	float tree_growth_rate <- 0.001;
 	int eating_season_month_end <- 10;
+	int n_months_to_full_growth <- 10;
+	float min_spread_seed_proba <- 0.0025;
 	int fringe_size <- 8;
 	int min_fringe_size <- 2;
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 4;
 	float threshold_to_eat <- 0.0;
-	
-	float step <- 1 #week;
 	
 	list<pasture_cell> empty_cells;
 	list<rgb> goat_colors <- [rgb(255,0,0), rgb(255,105,180), rgb(128,0,128), rgb(0,255,255), rgb(0,0,255), rgb(0,128,0), rgb(255,165,0), rgb(165,42,42)];
@@ -40,8 +41,10 @@ global {
 grid pasture_cell height: 50 width: 50 neighbors: 8 {
 
 	float max_tree <- 1.0;
-	float growth_rate;
-	float tree max: max_tree update: tree + growth_rate;
+	float growth_rate <- max_tree / n_months_to_full_growth;
+//	float tree max: max_tree update: tree + growth_rate;
+	float tree max: max_tree;
+	float current_size;
 	rgb color <- rgb(int(144 * (1 - tree)), int(238 - 138 * tree), int(144 * (1 - tree))) update: rgb(int(144 * (1 - tree)), int(238 - 138 * tree), int(144 * (1 - tree)));
 	bool has_tree <- flip(tree_init_cover);
 	list<pasture_cell> neighbors_to_move  <- (self neighbors_at goat_move_range);
@@ -57,20 +60,18 @@ grid pasture_cell height: 50 width: 50 neighbors: 8 {
 		}
 	}
 	
-	reflex grow_tree when: tree = 0 {
-		growth_rate <- 0.0;
+	reflex grow_tree when: every (1 #month) {
+			tree <- tree + growth_rate;
+			current_size <- tree / growth_rate;
+	}
+
+	reflex plant_tree when: tree = 0 {
 		int nb_tree_count <- fringe count (each.tree = 1);
 		if nb_tree_count >= min_fringe_size {
 			has_tree <- flip(min_spread_seed_proba * nb_tree_count);
-			if has_tree {
-				growth_rate <- tree_growth_rate;
-			}
 		}
 	}
 	
-	reflex stop_growing when: tree = 1 {
-		growth_rate <- 0.0;
-	}
 }
 
 species sheperd {
@@ -106,14 +107,11 @@ species goat {
 	}
 
     reflex move when: (my_cell.tree <= threshold_to_eat) and current_date.month <= eating_season_month_end {
-    	list<pasture_cell> full_growth_nb <- my_cell.neighbors_to_move select (each.tree = 1);
-    	if length(full_growth_nb) > 0 {
-			my_cell <- one_of (full_growth_nb) ;
-			location <- my_cell.location ;
-    	}
+		my_cell <- one_of (my_cell.neighbors_to_move) ;
+		location <- my_cell.location ;
     }
     
-	reflex eat_tree when: my_cell.tree > threshold_to_eat and my_cell.growth_rate = 0 and current_date.month <= eating_season_month_end { 
+	reflex eat_tree when: my_cell.tree > threshold_to_eat and current_date.month <= eating_season_month_end { 
 		my_cell.tree <- my_cell.tree - min([eating_cap, my_cell.tree]);
 		if my_cell.tree = 0.0 {
 			my_cell.has_tree <- false;
@@ -143,6 +141,7 @@ experiment sheperd_exp type: gui {
 		display charts refresh: every (12 #month) {
 			chart "charts" type:series background:rgb(255,255,255){
 				data "avg min size" value: sheperd mean_of (each.min_size) color:#green marker: false style: line;
+				data "avg grove size" value: pasture_cell mean_of (each.current_size) color: #red marker: false style: line;
 			}
 		}
 	}
