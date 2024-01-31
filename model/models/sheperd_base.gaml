@@ -16,7 +16,6 @@ global {
 	float grove_pct <- 0.3;
 	int number_of_goats_per_herd <- 4;
 	float goat_eating_cap <- 0.6;
-//	float tree_growth_rate <- 0.001;
 	int eating_season_month_end <- 10;
 	int n_months_to_full_growth <- 10;
 	float min_spread_seed_proba <- 0.0025;
@@ -71,7 +70,6 @@ grid pasture_cell height: 50 width: 50 neighbors: 8 {
 			has_tree <- flip(min_spread_seed_proba * nb_tree_count);
 		}
 	}
-	
 }
 
 species sheperd {
@@ -97,6 +95,7 @@ species goat {
 	list<int> unique_months <- [];
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
+
     init {
 		location <- my_cell.location;
     }
