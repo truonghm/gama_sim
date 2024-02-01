@@ -9,52 +9,56 @@ model sheperd
 
 global {
 	
-	float step <- 1 #week;
+	float step <- 1 #month;
 	string scenario <- "no_regulation";
 	bool is_batch <- false;
 	
 	bool has_no_regulation <- false;
-//	float respectful_proba <- 0.0;
 	int width <- 50;
 	int height <- 50;
-	int number_of_goats_per_herd <- 10;
+	int n_sheperds <- 10;
+	int n_goats_per_sheperd <- 10;
 	float goat_eating_cap <- 1.0;
 	int eating_season_month_end <- 10;
 	int n_months_to_full_growth <- 50;
-	float min_spread_seed_proba <- 0.0005;
+	float min_spread_seed_proba <- 0.0025;
 	int fringe_size <- 8;
 	int min_fringe_size <- 4;
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 5;
-	float threshold_to_eat <- 0.0;
+	float threshold_to_eat <- 0.05; // this is to make sure the goats can move when the amount of tree available is very close to 0
 
-	float global_min_size update: sheperd mean_of (each.min_size);
-	float avg_grove_size update: pasture_cell mean_of (each.current_size);
-	float tree_cov update: ((pasture_cell count (each.tree = 1)) / (width * height));
-	
 	list<pasture_cell> empty_cells;
-	list<rgb> goat_colors <- [rgb(100,50,255), rgb(255,105,180), rgb(255,255, 0), rgb(0,255,255), rgb(255,255,255), rgb(0,100,250), rgb(255,130,0), rgb(165,42,42)];
 	
-	int n_respectful_sheperd <- 0;
-	int n_disrespectful_sheperd <- length(goat_colors) - n_respectful_sheperd;
+	int n_respectful_sheperd <- 10;
+	int n_disrespectful_sheperd <- n_sheperds - n_respectful_sheperd;
 
 	init {
 		empty_cells <- list(pasture_cell);
 		
 		int n <- 0;
-		loop c over: goat_colors {
+		loop i over: 1 to n_sheperds {
 		    
-		    create goat number: 10 with: [color:: c] returns: goats_per_sheperd;
-		    if n <= n_respectful_sheperd {
-		    	create sheperd with: [herd_color:: c, goats:: goats_per_sheperd, is_respectful:: true];
+		    if has_no_regulation {
+		    	create goat number: n_goats_per_sheperd with: [color:: #blue] returns: goats_per_sheperd;
+		    	create sheperd with: [herd_color:: #blue, goats:: goats_per_sheperd, is_respectful:: true];
 		    } else {
-		    	create sheperd with: [herd_color:: c, goats:: goats_per_sheperd, is_respectful:: false];
+			    if n < n_respectful_sheperd {
+			    	create goat number: n_goats_per_sheperd with: [color:: #blue] returns: goats_per_sheperd;
+			    	create sheperd with: [herd_color:: #blue, goats:: goats_per_sheperd, is_respectful:: true];
+			    } else {
+			    	create goat number: n_goats_per_sheperd with: [color:: #red] returns: goats_per_sheperd;
+			    	create sheperd with: [herd_color:: #red, goats:: goats_per_sheperd, is_respectful:: false];
+			    }
 		    }
+		    
 		    n <- n + 1;
 		}
-	    n_respectful_sheperd <- sheperd count each.is_respectful;
-	    n_disrespectful_sheperd <- length(goat_colors) - n_respectful_sheperd;
 	}
+
+	float global_min_size <- sheperd mean_of (each.min_size) update: sheperd mean_of (each.min_size);
+	float avg_grove_size <- pasture_cell mean_of (each.current_size)update: pasture_cell mean_of (each.current_size);
+	float tree_cov <- ((pasture_cell count (each.tree = 1)) / (width * height))update: ((pasture_cell count (each.tree = 1)) / (width * height));
 	
 	reflex save_result when: every (1 #month)  and !is_batch {
 			save [
@@ -144,8 +148,6 @@ species goat {
     rgb color;
     bool is_respectful;
     int herd_min_size <- 0;
-//    bool has_grazed_tree <- false;
-	int n_months_graze_tree <- 0;
 	list<int> unique_months <- [];
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
@@ -156,12 +158,26 @@ species goat {
 
 	reflex reset when: current_date.month = 1 {
 		unique_months <- [];
-		n_months_graze_tree <- 0;
 	}
-
-    reflex move when: (my_cell.tree <= threshold_to_eat) and current_date.month <= eating_season_month_end {
+	
+	action move {
 		my_cell <- one_of (my_cell.neighbors_to_move) ;
 		location <- my_cell.location ;
+	}
+    reflex move when: (my_cell.tree <= threshold_to_eat) and current_date.month <= eating_season_month_end {
+		if has_no_regulation {
+			do move;
+		} else {
+			if not is_respectful {
+				if my_cell.current_size < herd_min_size {
+					do move;
+				}
+			} else {
+				if my_cell.current_size < global_min_size {
+					do move;
+				}
+			}
+		}
     }
     
     action eat_tree {
@@ -174,7 +190,6 @@ species goat {
     reflex check_month when: every (1#month) {
 		if not (unique_months contains current_date.month) {
 			add current_date.month to: unique_months;
-//			n_months_graze_tree <- n_months_graze_tree + 1;
 		}
     }
 
@@ -207,10 +222,11 @@ experiment sheperd_exp type: gui {
 	parameter "Initial grove coverage: " var: tree_init_cover category: "Initialization" min: 0.0 max: 1.0 step: 0.1 slider: true;
 	
 	parameter "Disable regulation completely: " var: has_no_regulation category: "Sheperd and goat";
-	parameter "Number of goat per herd: " var: number_of_goats_per_herd category: "Sheperd and goat";
+	parameter "Number of goat per herd: " var: n_goats_per_sheperd category: "Sheperd and goat";
 	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat" min: 0.0 max: 1.0 step: 0.1 slider: true;
 	parameter "Goat perceive/move range: " var: goat_move_range category: "Sheperd and goat";
-	
+	parameter "Number of respectful sheperds: " var: n_respectful_sheperd category: "Sheperd and goat" min: 0 max: n_sheperds step: 1 slider: true;
+
 	parameter "Number of months for tree groves to fully grow" var: n_months_to_full_growth category: "Tree groves" step: 5 slider: true;
 	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0 max: 1.0;
 	parameter "Fringe/Neighbor size: " var: fringe_size category: "Tree groves" ;
@@ -218,6 +234,8 @@ experiment sheperd_exp type: gui {
 
 	output {
 		monitor "Current month" value: current_date.month;
+		monitor "Current year" value: current_date.year;
+		
 		display grid {
 			grid pasture_cell;
 			species goat;
@@ -246,7 +264,7 @@ experiment sheperd_exp type: gui {
 experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
 	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat" min: 0.1 max: 1.0 step: 0.1;
 	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0005 max: 0.125 step: 0.0005;
-	parameter "Number of respectful sheperds: " var: n_respectful_sheperd category: "Sheperd and goat" min: 0 max: length(goat_colors) step: 1 slider: true;
+	parameter "Number of respectful sheperds: " var: n_respectful_sheperd category: "Sheperd and goat" min: 0 max: n_sheperds step: 1 slider: true;
 	parameter "Batch mode:" var: is_batch <- true;
 	
     method tabu 
