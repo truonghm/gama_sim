@@ -10,7 +10,7 @@ model sheperd
 global {
 	
 	float step <- 1 #month;
-	string scenario <- "no_regulation";
+	string scenario <- "all_respectful";
 	bool is_batch <- false;
 	
 	bool has_no_regulation <- false;
@@ -18,7 +18,7 @@ global {
 	int height <- 50;
 	int n_sheperds <- 10;
 	int n_goats_per_sheperd <- 10;
-	float goat_eating_cap <- 1.0;
+	float goat_eating_cap <- 0.7;
 	int eating_season_month_end <- 10;
 	int n_months_to_full_growth <- 50;
 	float min_spread_seed_proba <- 0.0025;
@@ -40,14 +40,20 @@ global {
 		loop i over: 1 to n_sheperds {
 		    
 		    if has_no_regulation {
-		    	create goat number: n_goats_per_sheperd with: [color:: #blue] returns: goats_per_sheperd;
-		    	create sheperd with: [herd_color:: #blue, goats:: goats_per_sheperd, is_respectful:: true];
+		    	rgb goat_color <- #purple;
+		    	image_file goat_icon <- image_file("../includes/neutral_goat.png");
+		    	create goat number: n_goats_per_sheperd with: [color:: goat_color, icon:: goat_icon] returns: goats_per_sheperd;
+		    	create sheperd with: [herd_color:: goat_color, goats:: goats_per_sheperd, is_respectful:: true];
 		    } else {
 			    if n < n_respectful_sheperd {
-			    	create goat number: n_goats_per_sheperd with: [color:: #blue] returns: goats_per_sheperd;
-			    	create sheperd with: [herd_color:: #blue, goats:: goats_per_sheperd, is_respectful:: true];
+			    	rgb goat_color <- #blue;
+			    	image_file goat_icon <- image_file("../includes/respectful_goat.png");
+			    	create goat number: n_goats_per_sheperd with: [color:: goat_color, icon:: goat_icon] returns: goats_per_sheperd;
+			    	create sheperd with: [herd_color:: goat_color, goats:: goats_per_sheperd, is_respectful:: true];
 			    } else {
-			    	create goat number: n_goats_per_sheperd with: [color:: #red] returns: goats_per_sheperd;
+			    	rgb goat_color <- #red;
+			    	image_file goat_icon <- image_file("../includes/disrespectful_goat.png");
+			    	create goat number: n_goats_per_sheperd with: [color:: goat_color, icon:: goat_icon] returns: goats_per_sheperd;
 			    	create sheperd with: [herd_color:: #red, goats:: goats_per_sheperd, is_respectful:: false];
 			    }
 		    }
@@ -60,7 +66,7 @@ global {
 	float avg_grove_size <- pasture_cell mean_of (each.current_size)update: pasture_cell mean_of (each.current_size);
 	float tree_cov <- ((pasture_cell count (each.tree = 1)) / (width * height))update: ((pasture_cell count (each.tree = 1)) / (width * height));
 	
-	reflex save_result when: every (1 #month)  and !is_batch {
+	reflex save_result when: !is_batch {
 			save [
 				int(self),
 				tree_cov, 
@@ -74,9 +80,17 @@ global {
 		   		to: "results_" + scenario + ".csv" format:"csv" rewrite: (cycle = 0) ? true : false header: true;
 	}
 
-	reflex stop_simulation when: (time > 420#month) or (tree_cov = 0.0) or (tree_cov > 0.99) and !is_batch {
+	reflex stop_simulation when: (time > 720#month) or (tree_cov = 0.0) or (tree_cov > 0.99) and !is_batch {
 		do pause;
 	} 
+	
+//	float sum_tree_cov <- 0.0 update: sum_tree_cov + tree_cov; 
+//
+//	float mean_tree_cov;
+//	reflex compute_yearly_mean when: current_date.month = 1 {
+//		mean_tree_cov <- sum_tree_cov / 12;
+//		sum_tree_cov <- tree_cov;
+//	}
 }
 
 grid pasture_cell height: height width: width neighbors: fringe_size {
@@ -151,6 +165,7 @@ species goat {
 	list<int> unique_months <- [];
 	pasture_cell my_cell <- one_of (pasture_cell) ;
 	float eating_cap <- goat_eating_cap;
+	image_file icon;
 
     init {
 		location <- my_cell.location;
@@ -213,6 +228,10 @@ species goat {
     aspect default {
         draw circle(0.8) color: color;
     }
+    
+    aspect use_icon {
+    	draw icon color: color size:3;
+    }
 }
 
 experiment sheperd_exp type: gui {
@@ -238,7 +257,7 @@ experiment sheperd_exp type: gui {
 		
 		display grid {
 			grid pasture_cell;
-			species goat;
+			species goat aspect: use_icon;
 			
 		}
 
@@ -270,12 +289,13 @@ experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
     method tabu 
         iter_max: 10 tabu_list_size: 3 
         minimize: abs(tree_cov - 0.6);
-	
+
 	reflex save_results_explo {
 		ask simulations {
 			save [
 				int(self),
 				tree_cov,
+//				mean_tree_cov,
 				global_min_size,
 				avg_grove_size,
 				n_respectful_sheperd, 
