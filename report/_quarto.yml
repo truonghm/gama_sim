@@ -1,6 +1,7 @@
 project:
   render:
-    - "report.qmd"
+    - "report.ipynb"
+  output-dir: ..
 
 title: "Modeling and simulation of complex systems"
 subtitle: "Project - Pasture and Forest"
@@ -18,9 +19,9 @@ format:
     sansfont: Latin Modern Roman
     geometry:
       - top=25mm
-      - left=35mm
+      - left=20mm
       - right=20mm
-      - bottom=24mm
+      - bottom=25mm
     keep-tex: false
 highlight-style: github
 code-block-bg: "#aadce3"
