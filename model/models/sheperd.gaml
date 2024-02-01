@@ -102,7 +102,7 @@ grid pasture_cell height: height width: width neighbors: fringe_size {
 			current_size <- tree / growth_rate;
 	}
 
-	reflex plant_seed when: tree = 0 {
+	reflex plant_seed when: tree = 0 and every (1 #month) {
 		int nb_tree_count <- fringe count (each.tree = 1.0);
 		if nb_tree_count >= min_fringe_size {
 			has_tree <- flip(min_spread_seed_proba * nb_tree_count);
