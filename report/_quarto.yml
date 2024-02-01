@@ -1,7 +1,6 @@
 project:
   render:
     - "report.ipynb"
-  output-dir: ..
 
 title: "Modeling and simulation of complex systems"
 subtitle: "Project - Pasture and Forest"
@@ -13,7 +12,7 @@ format:
     classoption: a4paper
     papersize: A4
     number-sections: true
-    toc: false
+    toc: true
     fontsize: 10pt
     mainfont: Latin Modern Roman
     sansfont: Latin Modern Roman
@@ -23,6 +22,7 @@ format:
       - right=20mm
       - bottom=25mm
     keep-tex: false
+    fig-pos: "H"
 highlight-style: github
 code-block-bg: "#aadce3"
 code-block-border-left: "#31BAE9"

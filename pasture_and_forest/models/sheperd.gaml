@@ -27,15 +27,11 @@ global {
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 5;
 	float threshold_to_eat <- 0.05; // this is to make sure the goats can move when the amount of tree available is very close to 0
-
-	list<pasture_cell> empty_cells;
 	
 	int n_respectful_sheperd <- 10;
 	int n_disrespectful_sheperd <- n_sheperds - n_respectful_sheperd;
 
 	init {
-		empty_cells <- list(pasture_cell);
-		
 		int n <- 0;
 		loop i over: 1 to n_sheperds {
 		    
@@ -83,14 +79,6 @@ global {
 	reflex stop_simulation when: (time > 720#month) or (tree_cov = 0.0) or (tree_cov > 0.99) and !is_batch {
 		do pause;
 	} 
-	
-//	float sum_tree_cov <- 0.0 update: sum_tree_cov + tree_cov; 
-//
-//	float mean_tree_cov;
-//	reflex compute_yearly_mean when: current_date.month = 1 {
-//		mean_tree_cov <- sum_tree_cov / 12;
-//		sum_tree_cov <- tree_cov;
-//	}
 }
 
 grid pasture_cell height: height width: width neighbors: fringe_size {
@@ -295,7 +283,6 @@ experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
 			save [
 				int(self),
 				tree_cov,
-//				mean_tree_cov,
 				global_min_size,
 				avg_grove_size,
 				n_respectful_sheperd, 
