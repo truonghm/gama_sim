@@ -16,3 +16,6 @@ In order to run the model, the user needs to have the GAMA Platform installed. T
 
 3. Run the model
 
+## Report
+
+The report for this prorject is available at [report/report.pdf](report/report.pdf).
