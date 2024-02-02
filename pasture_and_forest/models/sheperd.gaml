@@ -21,8 +21,8 @@ global {
 	float goat_eating_cap <- 0.7;
 	int eating_season_month_end <- 10;
 	int n_months_to_full_growth <- 50;
-	float min_spread_seed_proba <- 0.0025;
-	int fringe_size <- 8;
+	float min_seed_take_root_proba <- 0.0025;
+	int max_fringe_size <- 8;
 	int min_fringe_size <- 4;
 	float tree_init_cover <- 0.3;
 	int goat_move_range <- 5;
@@ -81,7 +81,7 @@ global {
 	} 
 }
 
-grid pasture_cell height: height width: width neighbors: fringe_size {
+grid pasture_cell height: height width: width neighbors: max_fringe_size {
 
 	float max_tree <- 1.0;
 	float growth_rate <- max_tree / n_months_to_full_growth;
@@ -91,7 +91,7 @@ grid pasture_cell height: height width: width neighbors: fringe_size {
 	rgb color <- rgb(int(144 * (1 - tree)), int(238 - 138 * tree), int(144 * (1 - tree))) update: rgb(int(144 * (1 - tree)), int(238 - 138 * tree), int(144 * (1 - tree)));
 	bool has_tree <- flip(tree_init_cover);
 	list<pasture_cell> neighbors_to_move  <- (self neighbors_at goat_move_range);
-	list<pasture_cell> fringe <- (self neighbors_at fringe_size);
+	list<pasture_cell> fringe <- (self neighbors_at max_fringe_size);
 
 	init {
 		if has_tree {
@@ -111,7 +111,7 @@ grid pasture_cell height: height width: width neighbors: fringe_size {
 	reflex plant_seed when: tree = 0 and every (1 #month) {
 		int nb_tree_count <- fringe count (each.tree = 1.0);
 		if nb_tree_count >= min_fringe_size {
-			has_tree <- flip(min_spread_seed_proba * nb_tree_count);
+			has_tree <- flip(min_seed_take_root_proba * nb_tree_count);
 		}
 	}
 }
@@ -235,8 +235,8 @@ experiment sheperd_exp type: gui {
 	parameter "Number of respectful sheperds: " var: n_respectful_sheperd category: "Sheperd and goat" min: 0 max: n_sheperds step: 1 slider: true;
 
 	parameter "Number of months for tree groves to fully grow" var: n_months_to_full_growth category: "Tree groves" step: 5 slider: true;
-	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0 max: 1.0;
-	parameter "Fringe/Neighbor size: " var: fringe_size category: "Tree groves" ;
+	parameter "Minimum probability to spread seed: " var: min_seed_take_root_proba category: "Tree groves" min: 0.0 max: 1.0;
+	parameter "Fringe/Neighbor size: " var: max_fringe_size category: "Tree groves" ;
 	parameter "Minimum fringe size for seed to spread: " var: min_fringe_size category: "Tree groves" ;
 
 	output {
@@ -270,7 +270,7 @@ experiment sheperd_exp type: gui {
 
 experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
 	parameter "Grazing Capacity of goat: " var: goat_eating_cap category: "Sheperd and goat" min: 0.1 max: 1.0 step: 0.1;
-	parameter "Minimum probability to spread seed: " var: min_spread_seed_proba category: "Tree groves" min: 0.0005 max: 0.125 step: 0.0005;
+	parameter "Minimum probability to spread seed: " var: min_seed_take_root_proba category: "Tree groves" min: 0.0005 max: 0.125 step: 0.0005;
 	parameter "Number of respectful sheperds: " var: n_respectful_sheperd category: "Sheperd and goat" min: 0 max: n_sheperds step: 1 slider: true;
 	parameter "Batch mode:" var: is_batch <- true;
 	
@@ -288,7 +288,7 @@ experiment optimize type: batch repeat: 2 keep_seed: true until: time > 5#year {
 				n_respectful_sheperd, 
 				n_disrespectful_sheperd, 
 				goat_eating_cap,
-				min_spread_seed_proba,
+				min_seed_take_root_proba,
 				current_date.month,
 				current_date.year
 			] 

@@ -24,13 +24,14 @@ format:
     keep-tex: false
     fig-pos: "H"
 highlight-style: github
-code-block-bg: "#aadce3"
-code-block-border-left: "#31BAE9"
+code-block-border-left: "#292b2e"
 execute:
   echo: false
   warning: false
   eval: true
 link-citations: true
+bibliography: citations.bib 
+csl: diabetologia.csl
 linkcolor: black  
 number-depth: 2
 fig-height: 3.8
